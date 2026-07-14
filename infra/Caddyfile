@@ -1,0 +1,23 @@
+# Caddyfile for SachCheck
+# Automatic HTTPS via Let's Encrypt
+
+# Replace with your actual domain
+sachcheck.yourdomain.com {
+    reverse_proxy web:3000
+    encode gzip
+}
+
+# API subdomain
+api.sachcheck.yourdomain.com {
+    reverse_proxy backend:8000
+    encode gzip
+}
+
+# Local development configuration (comment out in production)
+# localhost {
+#     reverse_proxy web:3000
+# }
+# 
+# api.localhost {
+#     reverse_proxy backend:8000
+# }

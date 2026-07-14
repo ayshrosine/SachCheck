@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: sachcheck-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - web
+    restart: unless-stopped
+    networks:
+      - sachcheck-network
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: sachcheck-backend
+    env_file:
+      - ../backend/.env
+    expose:
+      - "8000"
+    restart: unless-stopped
+    networks:
+      - sachcheck-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  web:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    container_name: sachcheck-web
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    expose:
+      - "3000"
+    restart: unless-stopped
+    networks:
+      - sachcheck-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  ollama:
+    image: ollama/ollama
+    container_name: sachcheck-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    expose:
+      - "11434"
+    restart: unless-stopped
+    networks:
+      - sachcheck-network
+    # Optionally pull model on startup
+    # command: ollama pull gemma4:e4b
+
+networks:
+  sachcheck-network:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
+  ollama_data:
