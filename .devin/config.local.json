@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Exec(cd)",
-      "Exec(mkdir)"
+      "Exec(mkdir)",
+      "Exec(python)",
+      "Exec(venv\\Scripts\\activate)",
+      "Exec(pip install)",
+      "Exec(node)",
+      "Exec(npm)"
     ]
   }
 }
