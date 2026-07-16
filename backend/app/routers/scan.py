@@ -8,6 +8,7 @@ from app.storage import storage
 from app.db import db
 from app.rate_limit import limiter
 from app.schemas import VerdictResponse, ScanResponse, Modality, FeedbackCreate
+from app.config import settings
 
 
 router = APIRouter()
@@ -55,13 +56,27 @@ async def create_scan(
     # Detect modality
     modality_str = _detect_modality(file.content_type)
     if modality_str is None:
-        raise HTTPException(status_code=415, detail="Unsupported file type")
+        raise HTTPException(
+            status_code=415, 
+            detail={
+                "error": "unsupported_file_type",
+                "message": "Unsupported file type. Please upload video, audio, or image files.",
+                "supported_types": ["video/*", "audio/*", "image/*"]
+            }
+        )
     
     modality = Modality(modality_str)
     
     # Check file size (50MB max)
     if file.size and file.size > 50 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="File too large (50MB max)")
+        raise HTTPException(
+            status_code=413, 
+            detail={
+                "error": "file_too_large",
+                "message": f"File size {file.size / (1024*1024):.2f}MB exceeds 50MB limit",
+                "max_size_mb": 50
+            }
+        )
     
     # Save file temporarily
     local_path = await _save_temp(file)
@@ -89,10 +104,29 @@ async def create_scan(
             object_key=object_key
         )
         
+        # Enhance response with additional metadata
+        scan_record["model_used"] = verdict_response.model_used
+        scan_record["processing_time_ms"] = verdict_response.processing_time_ms
+        
+        # Update object_key to be None if storage is not configured
+        if not storage.enabled:
+            scan_record["object_key"] = None
+        
         return ScanResponse(**scan_record)
         
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Analysis failed: {str(e)}")
+        print(f"Analysis error: {e}")
+        raise HTTPException(
+            status_code=503, 
+            detail={
+                "error": "analysis_failed",
+                "message": "Analysis service temporarily unavailable",
+                "suggestion": "Please try again in a few moments",
+                "debug_info": str(e) if settings.environment == "development" else None
+            }
+        )
     finally:
         # Clean up temp file
         if os.path.exists(local_path):

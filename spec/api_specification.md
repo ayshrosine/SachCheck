@@ -28,6 +28,41 @@
 }
 ```
 
+**Enhanced Error Responses**:
+Recent improvements include structured error responses with additional context:
+
+```json
+{
+  "detail": {
+    "error": "unsupported_file_type",
+    "message": "Unsupported file type. Please upload video, audio, or image files.",
+    "supported_types": ["video/*", "audio/*", "image/*"]
+  }
+}
+```
+
+```json
+{
+  "detail": {
+    "error": "rate_limit_exceeded",
+    "message": "Too many requests. Please try again later.",
+    "limit": "20/hour",
+    "retry_after": 3600
+  }
+}
+```
+
+```json
+{
+  "detail": {
+    "error": "analysis_failed",
+    "message": "Analysis service temporarily unavailable",
+    "suggestion": "Please try again in a few moments",
+    "debug_info": "Detailed error in development mode"
+  }
+}
+```
+
 ### HTTP Status Codes
 - `200 OK`: Successful request
 - `201 Created`: Resource created
@@ -130,7 +165,9 @@ device_abc123
     "payment_pressure": null
   },
   "object_key": "video/550e8400-e29b-41d4-a716-446655440000",
-  "created_at": "2026-07-15T10:30:00.000Z"
+  "created_at": "2026-07-15T10:30:00.000Z",
+  "model_used": "google_ai_studio",
+  "processing_time_ms": 1250
 }
 ```
 

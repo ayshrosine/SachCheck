@@ -119,6 +119,12 @@ Data Layer (Supabase + R2)
 }
 ```
 
+**Error Handling**:
+- Enhanced error responses with structured error objects
+- Development-specific debug information when ENVIRONMENT=development
+- Graceful degradation when services are unavailable
+- All configuration fields are optional for development mode
+
 #### 3. Database Layer (Supabase)
 
 **Database**: PostgreSQL 15+

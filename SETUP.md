@@ -88,19 +88,31 @@ copy .env.example .env
 Edit `.env` file with your credentials:
 
 ```env
+# AI Model (Optional - runs in degraded mode without)
 GOOGLE_AI_STUDIO_API_KEY=your_google_api_key
 GEMMA_MODEL_ID=gemma-4-12b-unified
+
+# Database (Optional - runs in database-less mode without)
 SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# Storage (Optional - runs in storage-less mode without)
 R2_ACCOUNT_ID=your_r2_account_id
 R2_ACCESS_KEY=your_r2_access_key
 R2_SECRET_KEY=your_r2_secret_key
 R2_BUCKET=sachcheck-media
+
+# Optional settings
 OLLAMA_BASE_URL=http://localhost:11434
 ENVIRONMENT=development
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
 ```
+
+**Note**: All environment variables are now optional. The application will run in degraded mode without credentials:
+- Without Google AI Studio: Uses Ollama fallback or returns mock responses
+- Without Supabase: Runs in database-less mode with mock storage
+- Without R2: Runs in storage-less mode with mock file handling
 
 ### 3.4 Test Backend
 
@@ -250,7 +262,10 @@ curl -F "file=@test_image.jpg" \
 **Solution**: Make sure virtual environment is activated and dependencies installed
 
 **Problem**: Database connection errors
-**Solution**: Check Supabase credentials in `.env` and ensure Supabase project is active
+**Solution**: 
+- The application now runs in database-less mode if credentials are missing
+- Check Supabase credentials in `.env` and ensure Supabase project is active
+- Verify network connectivity to Supabase
 
 ### Frontend Issues
 

@@ -1,10 +1,13 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 import sentry_sdk
 from app.config import settings
 from app.db import db
 from app.routers import scan, auth, whatsapp
+from app.rate_limit import limiter, rate_limit_handler
 from app.schemas import HealthResponse
 from datetime import datetime
 
@@ -48,6 +51,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add rate limit exception handler
+app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
+app.state.limiter = limiter
 
 
 # Include routers

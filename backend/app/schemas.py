@@ -36,6 +36,8 @@ class VerdictResponse(BaseModel):
     modality_flags: Optional[ModalityFlags] = None
     model_used: str = Field(description="Which model path produced this verdict")
     processing_time_ms: int = Field(description="Time taken for analysis in milliseconds")
+    
+    model_config = {"protected_namespaces": ()}
 
 
 class ScanCreate(BaseModel):
@@ -57,9 +59,10 @@ class ScanResponse(BaseModel):
     modality_flags: Optional[Dict[str, Any]] = None
     object_key: Optional[str] = None
     created_at: datetime
+    model_used: Optional[str] = None
+    processing_time_ms: Optional[int] = None
     
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True, "protected_namespaces": ()}
 
 
 class FeedbackCreate(BaseModel):

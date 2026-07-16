@@ -11,12 +11,26 @@ class Database:
     
     async def connect(self):
         """Create connection pool to Supabase Postgres"""
-        self.pool = await asyncpg.create_pool(
-            settings.supabase_url.replace('https://', 'postgresql://'),
-            min_size=2,
-            max_size=10,
-            command_timeout=60
-        )
+        try:
+            if not settings.supabase_url:
+                print("No Supabase URL configured - running in database-less mode")
+                self.pool = None
+                return
+                
+            db_url = settings.supabase_url
+            if db_url.startswith('https://'):
+                db_url = db_url.replace('https://', 'postgresql://')
+            self.pool = await asyncpg.create_pool(
+                db_url,
+                min_size=2,
+                max_size=10,
+                command_timeout=60
+            )
+            print("Database connected successfully")
+        except Exception as e:
+            print(f"Database connection failed: {e}")
+            print("Continuing without database connection...")
+            self.pool = None
     
     async def disconnect(self):
         """Close connection pool"""
@@ -35,6 +49,23 @@ class Database:
         user_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Save a scan record to the database"""
+        if not self.pool:
+            # Return a mock record when database is not available
+            import uuid
+            from datetime import datetime
+            return {
+                "id": str(uuid.uuid4()),
+                "device_id": device_id,
+                "user_id": user_id,
+                "modality": modality.value,
+                "verdict": verdict.value,
+                "confidence": confidence,
+                "reasons": reasons,
+                "modality_flags": modality_flags,
+                "object_key": object_key,
+                "created_at": datetime.utcnow()
+            }
+            
         async with self.pool.acquire() as conn:
             record = await conn.fetchrow(
                 """
@@ -55,6 +86,10 @@ class Database:
     
     async def get_recent_scans(self, device_id: str, limit: int = 20) -> List[Dict[str, Any]]:
         """Get recent scans for a device"""
+        if not self.pool:
+            # Return empty list when database is not available
+            return []
+            
         async with self.pool.acquire() as conn:
             records = await conn.fetch(
                 """
@@ -71,6 +106,18 @@ class Database:
     
     async def save_feedback(self, scan_id: str, was_verdict_correct: bool, note: Optional[str] = None) -> Dict[str, Any]:
         """Save user feedback on a verdict"""
+        if not self.pool:
+            # Return a mock record when database is not available
+            import uuid
+            from datetime import datetime
+            return {
+                "id": str(uuid.uuid4()),
+                "scan_id": scan_id,
+                "was_verdict_correct": was_verdict_correct,
+                "note": note,
+                "created_at": datetime.utcnow()
+            }
+            
         async with self.pool.acquire() as conn:
             record = await conn.fetchrow(
                 """

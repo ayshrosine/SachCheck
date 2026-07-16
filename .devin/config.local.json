@@ -7,7 +7,15 @@
       "Exec(venv\\Scripts\\activate)",
       "Exec(pip install)",
       "Exec(node)",
-      "Exec(npm)"
+      "Exec(npm)",
+      "Exec(ls)",
+      "Exec(dir)",
+      "Exec(where python)",
+      "Exec(./python.exe)",
+      "Exec(./pip.exe list)",
+      "Exec(../backend/venv/Scripts/python.exe)",
+      "Exec(curl)",
+      "Exec(Invoke-WebRequest)"
     ]
   }
 }

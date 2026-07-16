@@ -603,19 +603,24 @@ python -c "from app.storage import storage; print('R2 configured')"
 
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
-| `GOOGLE_AI_STUDIO_API_KEY` | Yes | Google AI API key | `AIzaSy...` |
+| `GOOGLE_AI_STUDIO_API_KEY` | No | Google AI API key (runs in degraded mode without) | `AIzaSy...` |
 | `GEMMA_MODEL_ID` | No | Model identifier | `gemma-4-12b-unified` |
-| `SUPABASE_URL` | Yes | Supabase project URL | `https://xxx.supabase.co` |
-| `SUPABASE_ANON_KEY` | Yes | Supabase anon key | `eyJ...` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service key | `eyJ...` |
-| `R2_ACCOUNT_ID` | Yes | Cloudflare account ID | `abc123...` |
-| `R2_ACCESS_KEY` | Yes | R2 access key | `access_key...` |
-| `R2_SECRET_KEY` | Yes | R2 secret key | `secret_key...` |
+| `SUPABASE_URL` | No | Supabase project URL (runs in database-less mode without) | `https://xxx.supabase.co` |
+| `SUPABASE_ANON_KEY` | No | Supabase anon key | `eyJ...` |
+| `SUPABASE_SERVICE_ROLE_KEY` | No | Supabase service key | `eyJ...` |
+| `R2_ACCOUNT_ID` | No | Cloudflare account ID (runs in storage-less mode without) | `abc123...` |
+| `R2_ACCESS_KEY` | No | R2 access key | `access_key...` |
+| `R2_SECRET_KEY` | No | R2 secret key | `secret_key...` |
 | `R2_BUCKET` | No | R2 bucket name | `sachcheck-media` |
 | `OLLAMA_BASE_URL` | No | Ollama server URL | `http://localhost:11434` |
 | `SENTRY_DSN` | No | Sentry DSN for error tracking | `https://...` |
 | `ENVIRONMENT` | No | Environment name | `development` |
 | `ALLOWED_ORIGINS` | No | CORS allowed origins | `http://localhost:3000` |
+
+**Note**: All variables are now optional. The application will run in degraded mode without credentials:
+- Without Google AI Studio: Uses Ollama fallback or returns mock responses
+- Without Supabase: Runs in database-less mode with mock storage
+- Without R2: Runs in storage-less mode with mock file handling
 
 ### Frontend Configuration
 
@@ -1018,16 +1023,50 @@ Solution:
 3. Review schema.sql for correct policy setup
 ```
 
+**Problem: Database connection errors**
+```bash
+Solution:
+1. The application now runs in database-less mode if credentials are missing
+2. Check Supabase credentials in .env file
+3. Verify Supabase project is active (not paused)
+4. Check network connectivity
+5. Ensure Supabase allows connections from your IP
+```
+
 #### Storage Issues
 
 **Problem: R2 upload failures**
 ```bash
 Solution:
-1. Verify R2 credentials are correct
-2. Check bucket exists and is accessible
-3. Ensure bucket lifecycle rules are set
-4. Check file size doesn't exceed limits
+1. The application now runs in storage-less mode if credentials are missing
+2. Verify R2 credentials are correct
+3. Check bucket exists and is accessible
+4. Ensure bucket lifecycle rules are set
+5. Check file size doesn't exceed limits
 ```
+
+#### Recent Debugging Fixes
+
+**Configuration Handling Improvements**:
+- All configuration fields are now optional to handle missing credentials gracefully
+- Application runs in degraded mode when services are not configured
+- Better error messages with structured error responses
+
+**Enhanced Error Responses**:
+- Structured error objects with error codes, messages, and suggestions
+- Development-specific debug information in error responses
+- Better rate limit exceeded responses with retry_after information
+
+**Schema Fixes**:
+- Fixed Pydantic warnings about "model_" namespace conflicts
+- Added `model_config = {"protected_namespaces": ()}` to affected schemas
+- Enhanced response models with model_used and processing_time_ms fields
+
+**Graceful Degradation**:
+- Database-less mode when Supabase credentials are missing
+- Storage-less mode when R2 credentials are missing
+- Model router handles missing Google AI Studio API key
+- All services provide mock responses when unavailable
 
 ### Getting Help
 

@@ -96,16 +96,16 @@ SachCheck is an AI-powered deepfake detection system using Gemma 4 12B Unified m
 Copy `backend/.env.example` to `backend/.env` and configure:
 
 ```env
-# AI Model
+# AI Model (Optional - runs in degraded mode without)
 GOOGLE_AI_STUDIO_API_KEY=your_key_here
 GEMMA_MODEL_ID=gemma-4-12b-unified
 
-# Database
+# Database (Optional - runs in database-less mode without)
 SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
-# Storage
+# Storage (Optional - runs in storage-less mode without)
 R2_ACCOUNT_ID=your_account_id
 R2_ACCESS_KEY=your_access_key
 R2_SECRET_KEY=your_secret_key
@@ -122,6 +122,11 @@ SENTRY_DSN=your_sentry_dsn
 ENVIRONMENT=development
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
 ```
+
+**Note**: All configuration fields are now optional. The application will run in degraded mode when credentials are missing:
+- Without Google AI Studio: Uses Ollama fallback or returns mock responses
+- Without Supabase: Runs in database-less mode with mock storage
+- Without R2: Runs in storage-less mode with mock file handling
 
 ## Testing
 
