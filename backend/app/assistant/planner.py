@@ -19,4 +19,6 @@ class Planner:
         """Create a plan for an exact supported message."""
         if message == "health":
             return Plan(tool_name="health_check")
+        if message == "history":
+            return Plan(tool_name="get_history")
         return None
