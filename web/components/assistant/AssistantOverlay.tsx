@@ -13,6 +13,10 @@ interface AssistantOverlayProps {
   onClose: () => void
 }
 
+const EXECUTING_DELAY_MS = 900
+const COMPLETED_DURATION_MS = 1600
+const OVERLAY_TRANSITION_MS = 220
+
 const focusableSelector = [
   'button:not([disabled])',
   'input:not([disabled])',
@@ -29,15 +33,59 @@ export default function AssistantOverlay({
   const [assistantResponse, setAssistantResponse] = useState('')
   const [error, setError] = useState('')
   const [state, setState] = useState<AssistantState>('idle')
+  const [shouldRender, setShouldRender] = useState(open)
+  const [isVisible, setIsVisible] = useState(false)
   const overlayRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const onCloseRef = useRef(onClose)
+  const requestIdRef = useRef(0)
+  const executingTimerRef = useRef<number | null>(null)
+  const completedTimerRef = useRef<number | null>(null)
   const titleId = useId()
   const subtitleId = useId()
+  const isBusy = state === 'thinking' || state === 'executing'
 
   useEffect(() => {
     onCloseRef.current = onClose
   }, [onClose])
+
+  useEffect(() => {
+    let animationFrame: number | undefined
+    let transitionTimer: number | undefined
+
+    if (open) {
+      setShouldRender(true)
+      animationFrame = window.requestAnimationFrame(() => {
+        setIsVisible(true)
+      })
+    } else {
+      setIsVisible(false)
+      transitionTimer = window.setTimeout(() => {
+        setShouldRender(false)
+      }, OVERLAY_TRANSITION_MS)
+    }
+
+    return () => {
+      if (animationFrame !== undefined) {
+        window.cancelAnimationFrame(animationFrame)
+      }
+      if (transitionTimer !== undefined) {
+        window.clearTimeout(transitionTimer)
+      }
+    }
+  }, [open])
+
+  useEffect(() => {
+    return () => {
+      requestIdRef.current += 1
+      if (executingTimerRef.current !== null) {
+        window.clearTimeout(executingTimerRef.current)
+      }
+      if (completedTimerRef.current !== null) {
+        window.clearTimeout(completedTimerRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (!open) {
@@ -96,14 +144,26 @@ export default function AssistantOverlay({
 
   const handleSubmit = async () => {
     const trimmedMessage = message.trim()
-    if (!trimmedMessage || state === 'thinking') {
+    if (!trimmedMessage || isBusy) {
       return
+    }
+
+    const requestId = requestIdRef.current + 1
+    requestIdRef.current = requestId
+    if (completedTimerRef.current !== null) {
+      window.clearTimeout(completedTimerRef.current)
+      completedTimerRef.current = null
     }
 
     setLastMessage(trimmedMessage)
     setAssistantResponse('')
     setError('')
     setState('thinking')
+    executingTimerRef.current = window.setTimeout(() => {
+      if (requestIdRef.current === requestId) {
+        setState('executing')
+      }
+    }, EXECUTING_DELAY_MS)
 
     try {
       const result = await assistantClient.sendMessage(trimmedMessage)
@@ -111,10 +171,23 @@ export default function AssistantOverlay({
         throw new Error(result.response || 'Jarvis could not complete the request.')
       }
 
+      if (executingTimerRef.current !== null) {
+        window.clearTimeout(executingTimerRef.current)
+        executingTimerRef.current = null
+      }
       setAssistantResponse(result.response)
       setMessage('')
       setState('completed')
+      completedTimerRef.current = window.setTimeout(() => {
+        if (requestIdRef.current === requestId) {
+          setState('idle')
+        }
+      }, COMPLETED_DURATION_MS)
     } catch (requestError) {
+      if (executingTimerRef.current !== null) {
+        window.clearTimeout(executingTimerRef.current)
+        executingTimerRef.current = null
+      }
       setError(
         requestError instanceof Error
           ? requestError.message
@@ -124,29 +197,35 @@ export default function AssistantOverlay({
     }
   }
 
-  if (!open) {
+  if (!shouldRender) {
     return null
   }
 
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-[100] min-h-[100dvh] overflow-y-auto bg-slate-950/85 text-white backdrop-blur-2xl"
+      className={`jarvis-overlay-backdrop fixed inset-0 z-[100] min-h-[100dvh] overflow-y-auto text-white ${
+        isVisible
+          ? 'pointer-events-auto opacity-100'
+          : 'pointer-events-none opacity-0'
+      }`}
+      data-visible={isVisible}
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
       aria-describedby={subtitleId}
+      aria-hidden={!open}
     >
       <div
-        className="pointer-events-none absolute -left-32 bottom-0 h-80 w-80 rounded-full bg-indigo-500/10 blur-3xl"
+        className="jarvis-ambient jarvis-ambient-one pointer-events-none absolute -left-32 bottom-0 h-80 w-80 rounded-full bg-indigo-500/15 blur-3xl"
         aria-hidden="true"
       />
       <div
-        className="pointer-events-none absolute -right-24 top-0 h-96 w-96 rounded-full bg-cyan-400/10 blur-3xl"
+        className="jarvis-ambient jarvis-ambient-two pointer-events-none absolute -right-24 top-0 h-96 w-96 rounded-full bg-cyan-400/15 blur-3xl"
         aria-hidden="true"
       />
 
-      <div className="relative flex min-h-[100dvh] flex-col">
+      <div className="jarvis-overlay-content relative flex min-h-[100dvh] flex-col">
         <AssistantHeader
           titleId={titleId}
           subtitleId={subtitleId}
@@ -184,13 +263,27 @@ export default function AssistantOverlay({
                   <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300/70">
                     Jarvis
                   </p>
-                  {state === 'thinking' && (
-                    <p className="text-lg text-slate-400">
-                      Working on your request…
-                    </p>
+                  {isBusy && (
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="jarvis-thinking-orb h-3 w-3 rounded-full bg-cyan-300"
+                        aria-hidden="true"
+                      />
+                      <p className="jarvis-thinking-shimmer text-lg">
+                        {state === 'thinking'
+                          ? 'Reasoning through your request…'
+                          : 'Executing the selected action…'}
+                      </p>
+                    </div>
                   )}
                   {assistantResponse && (
-                    <p className="text-xl leading-8 text-white sm:text-2xl sm:leading-9">
+                    <p
+                      className={`text-xl leading-8 text-white sm:text-2xl sm:leading-9 ${
+                        state === 'completed'
+                          ? 'jarvis-response-complete'
+                          : ''
+                      }`}
+                    >
                       {assistantResponse}
                     </p>
                   )}
@@ -208,7 +301,7 @@ export default function AssistantOverlay({
             <AssistantInput
               ref={inputRef}
               value={message}
-              disabled={state === 'thinking'}
+              disabled={isBusy}
               onChange={setMessage}
               onSubmit={handleSubmit}
             />
