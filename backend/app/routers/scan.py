@@ -3,6 +3,7 @@ from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from app.db import db
 from app.rate_limit import limiter
 from app.schemas import FeedbackCreate, ScanResponse
+from app.services.history_service import history_service
 from app.services.scan_service import scan_service
 
 
@@ -26,8 +27,7 @@ async def create_scan(
 @router.get("/scans", response_model=list[ScanResponse])
 async def list_scans(device_id: str):
     """Get recent scans for a device"""
-    scans = await db.get_recent_scans(device_id)
-    return [ScanResponse(**scan) for scan in scans]
+    return await history_service.get_recent_scans(device_id=device_id)
 
 
 @router.post("/feedback")
