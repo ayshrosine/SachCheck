@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from inspect import isawaitable
 from typing import Any
 
+from app.assistant.context import ApplicationContext
 from app.assistant.types import ToolResult
 
 
@@ -55,7 +56,7 @@ class ToolRegistry:
         return list(self._tools.values())
 
 
-def _health_check() -> ToolResult:
+def _health_check(*, context: ApplicationContext) -> ToolResult:
     return ToolResult(
         success=True,
         message="Jarvis operational.",
