@@ -1,12 +1,14 @@
 """Registration and execution infrastructure for assistant tools."""
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from inspect import isawaitable
 from typing import Any
 
+from app.assistant.types import ToolResult
 
-ToolHandler = Callable[..., Any]
+
+ToolHandler = Callable[..., ToolResult | Awaitable[ToolResult]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,11 +39,15 @@ class ToolRegistry:
         except KeyError:
             raise KeyError(f"Tool '{name}' is not registered.") from None
 
-    async def execute(self, name: str, **kwargs: Any) -> Any:
+    async def execute(self, name: str, **kwargs: Any) -> ToolResult:
         """Execute a tool and await its result when necessary."""
         result = self.get(name).handler(**kwargs)
         if isawaitable(result):
-            return await result
+            result = await result
+        if not isinstance(result, ToolResult):
+            raise TypeError(
+                f"Tool '{name}' returned an invalid result; expected ToolResult."
+            )
         return result
 
     def list_tools(self) -> list[Tool]:
@@ -49,8 +55,12 @@ class ToolRegistry:
         return list(self._tools.values())
 
 
-def _health_check() -> str:
-    return "Jarvis operational."
+def _health_check() -> ToolResult:
+    return ToolResult(
+        success=True,
+        message="Jarvis operational.",
+        data=None,
+    )
 
 
 tool_registry = ToolRegistry()

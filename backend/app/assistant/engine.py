@@ -15,4 +15,5 @@ class AssistantEngine:
         plan = await self._planner.plan(message)
         if plan is None:
             return "Jarvis initialized."
-        return await tool_registry.execute(plan.tool_name, **plan.parameters)
+        result = await tool_registry.execute(plan.tool_name, **plan.parameters)
+        return result.message
