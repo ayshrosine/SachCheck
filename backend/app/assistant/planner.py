@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 from typing import Any
+from uuid import uuid4
 
 
 @dataclass(frozen=True, slots=True)
@@ -10,6 +11,9 @@ class Plan:
 
     tool_name: str
     parameters: dict[str, Any] = field(default_factory=dict)
+    plan_id: str = field(default_factory=lambda: str(uuid4()))
+    description: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class Planner:
