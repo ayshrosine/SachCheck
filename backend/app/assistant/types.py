@@ -2,7 +2,14 @@
 
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class AssistantAction(BaseModel):
+    """A structured application action requested by the assistant."""
+
+    type: str
+    payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class ToolResult(BaseModel):
@@ -11,6 +18,7 @@ class ToolResult(BaseModel):
     success: bool
     message: str
     data: dict[str, Any] | None = None
+    action: AssistantAction | None = None
 
 
 class AssistantChatRequest(BaseModel):
@@ -24,3 +32,4 @@ class AssistantChatResponse(BaseModel):
 
     success: bool
     response: str
+    action: AssistantAction | None = None

@@ -1,3 +1,11 @@
+import {
+  dispatch,
+  isAssistantAction,
+  type AssistantAction,
+} from './dispatcher'
+
+export type { AssistantAction } from './dispatcher'
+
 export interface AssistantRequest {
   message: string
 }
@@ -5,6 +13,7 @@ export interface AssistantRequest {
 export interface AssistantResponse {
   success: boolean
   response: string
+  action?: AssistantAction | null
 }
 
 export class AssistantClientError extends Error {
@@ -27,9 +36,11 @@ function isAssistantResponse(value: unknown): value is AssistantResponse {
   }
 
   const response = value as Record<string, unknown>
+  const action = response.action
   return (
     typeof response.success === 'boolean' &&
-    typeof response.response === 'string'
+    typeof response.response === 'string' &&
+    (action === undefined || action === null || isAssistantAction(action))
   )
 }
 
@@ -88,6 +99,10 @@ export async function sendMessage(
       'The assistant service returned an invalid response.',
       response.status,
     )
+  }
+
+  if (payload.action) {
+    await dispatch(payload.action)
   }
 
   return payload
