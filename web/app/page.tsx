@@ -1,13 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import UploadCard from '@/components/UploadCard'
 import VerdictCard from '@/components/VerdictCard'
 import RecentScans from '@/components/RecentScans'
 import ConsentNotice from '@/components/ConsentNotice'
 import { AssistantOverlay } from '@/components/assistant'
+import { registerNavigationActionHandler } from '@/lib/assistant/actions/navigation'
 
 export default function Home() {
+  const router = useRouter()
   const [deviceId] = useState(() => {
     // Generate or retrieve device ID
     if (typeof window !== 'undefined') {
@@ -24,6 +27,11 @@ export default function Home() {
   const [currentVerdict, setCurrentVerdict] = useState<any>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [isAssistantOpen, setIsAssistantOpen] = useState(false)
+
+  useEffect(
+    () => registerNavigationActionHandler((route) => router.push(route)),
+    [router],
+  )
 
   const handleScanComplete = (verdict: any) => {
     setCurrentVerdict(verdict)

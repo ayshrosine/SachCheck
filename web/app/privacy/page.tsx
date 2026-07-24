@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export default function PrivacyPolicy() {
   const [hasConsented, setHasConsented] = useState(false)
@@ -10,14 +10,10 @@ export default function PrivacyPolicy() {
     setHasConsented(true)
   }
 
-  const checkConsent = () => {
+  useEffect(() => {
     const consent = localStorage.getItem('sachcheck_consent')
     setHasConsented(consent === 'true')
-  }
-
-  useState(() => {
-    checkConsent()
-  })
+  }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 py-12 px-4">

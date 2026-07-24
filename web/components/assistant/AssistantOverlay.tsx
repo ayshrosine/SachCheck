@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react'
 
+import { registerOverlayActionHandlers } from '@/lib/assistant/actions/overlay'
 import { assistantClient } from '@/lib/assistant/client'
 
 import AssistantHeader from './AssistantHeader'
@@ -58,6 +59,7 @@ export default function AssistantOverlay({
   const [message, setMessage] = useState('')
   const [messages, setMessages] = useState<ConversationMessage[]>([])
   const [error, setError] = useState('')
+  const [shouldFocusInput, setShouldFocusInput] = useState(false)
   const [shouldRender, setShouldRender] = useState(open)
   const [isVisible, setIsVisible] = useState(false)
   const overlayRef = useRef<HTMLDivElement>(null)
@@ -74,6 +76,26 @@ export default function AssistantOverlay({
   }, [onClose])
 
   useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    return registerOverlayActionHandlers({
+      close: () => onCloseRef.current(),
+      focusInput: () => setShouldFocusInput(true),
+    })
+  }, [open])
+
+  useEffect(() => {
+    if (!open || execution.isActive || !shouldFocusInput) {
+      return
+    }
+
+    setShouldFocusInput(false)
+    inputRef.current?.focus()
+  }, [execution.isActive, open, shouldFocusInput])
+
+  useEffect(() => {
     let animationFrame: number | undefined
     let transitionTimer: number | undefined
 
@@ -87,6 +109,7 @@ export default function AssistantOverlay({
       setMessage('')
       setMessages([])
       setError('')
+      setShouldFocusInput(false)
       execution.reset()
       setIsVisible(false)
       transitionTimer = window.setTimeout(() => {

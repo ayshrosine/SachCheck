@@ -16,6 +16,11 @@ _FALLBACK_TOOLS = {
     "scan video": "scan_video",
     "scan audio": "scan_audio",
     "history": "get_history",
+    "open privacy policy": "open_privacy_policy",
+    "Open the privacy policy.": "open_privacy_policy",
+    "close jarvis": "close_assistant",
+    "Close Jarvis.": "close_assistant",
+    "focus input": "focus_assistant_input",
 }
 _PROMPT = (
     Path(__file__).parent.parent / "prompts" / "planner_prompt.txt"
