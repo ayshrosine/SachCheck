@@ -1,16 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import UploadCard from '@/components/UploadCard'
 import VerdictCard from '@/components/VerdictCard'
 import RecentScans from '@/components/RecentScans'
 import ConsentNotice from '@/components/ConsentNotice'
-import { AssistantOverlay } from '@/components/assistant'
-import { registerNavigationActionHandler } from '@/lib/assistant/actions/navigation'
 
 export default function Home() {
-  const router = useRouter()
   const [deviceId] = useState(() => {
     // Generate or retrieve device ID
     if (typeof window !== 'undefined') {
@@ -26,12 +22,6 @@ export default function Home() {
 
   const [currentVerdict, setCurrentVerdict] = useState<any>(null)
   const [refreshKey, setRefreshKey] = useState(0)
-  const [isAssistantOpen, setIsAssistantOpen] = useState(false)
-
-  useEffect(
-    () => registerNavigationActionHandler((route) => router.push(route)),
-    [router],
-  )
 
   const handleScanComplete = (verdict: any) => {
     setCurrentVerdict(verdict)
@@ -49,15 +39,6 @@ export default function Home() {
           <p className="text-lg text-gray-600 dark:text-gray-300">
             AI-powered deepfake and scam detection
           </p>
-          <button
-            type="button"
-            onClick={() => setIsAssistantOpen(true)}
-            className="mt-6 inline-flex items-center rounded-full bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-gray-900/15 transition-colors hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
-            aria-haspopup="dialog"
-            aria-expanded={isAssistantOpen}
-          >
-            ✨ Jarvis
-          </button>
         </header>
 
         <div className="grid lg:grid-cols-2 gap-8">
@@ -95,10 +76,6 @@ export default function Home() {
       </div>
       
       <ConsentNotice />
-      <AssistantOverlay
-        open={isAssistantOpen}
-        onClose={() => setIsAssistantOpen(false)}
-      />
     </main>
   )
 }

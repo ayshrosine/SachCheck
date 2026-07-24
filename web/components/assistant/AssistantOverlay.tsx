@@ -261,6 +261,7 @@ export default function AssistantOverlay({
 
   return (
     <div
+      id="jarvis-assistant-overlay"
       ref={overlayRef}
       className={`jarvis-overlay-backdrop fixed inset-0 z-[100] min-h-[100dvh] overflow-hidden text-white ${
         isVisible

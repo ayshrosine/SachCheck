@@ -1,3 +1,9 @@
+export {
+  AssistantProvider,
+  useAssistant,
+} from './AssistantProvider'
+export type { AssistantControls } from './AssistantProvider'
+export { default as AssistantFloatingButton } from './AssistantFloatingButton'
 export { default as AssistantOverlay } from './AssistantOverlay'
 export { default as AssistantHeader } from './AssistantHeader'
 export { default as AssistantInput } from './AssistantInput'
