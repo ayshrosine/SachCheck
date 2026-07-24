@@ -164,6 +164,10 @@ body {
   .jarvis-response-complete {
     animation: jarvis-response-reveal 440ms cubic-bezier(0.22, 1, 0.36, 1);
   }
+
+  .jarvis-stage-transition {
+    animation: jarvis-stage-enter 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
 }
 
 @layer utilities {
@@ -257,6 +261,17 @@ body {
   }
 }
 
+@keyframes jarvis-stage-enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .jarvis-overlay-backdrop,
   .jarvis-overlay-content,
@@ -271,7 +286,8 @@ body {
   .jarvis-status-dots span,
   .jarvis-thinking-orb,
   .jarvis-thinking-shimmer,
-  .jarvis-response-complete {
+  .jarvis-response-complete,
+  .jarvis-stage-transition {
     animation: none !important;
   }
 }

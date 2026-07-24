@@ -6,15 +6,14 @@ import { assistantClient } from '@/lib/assistant/client'
 
 import AssistantHeader from './AssistantHeader'
 import AssistantInput from './AssistantInput'
-import AssistantStatus, { type AssistantState } from './AssistantStatus'
+import AssistantStatus from './AssistantStatus'
+import { useExecutionProgress } from './useExecutionProgress'
 
 interface AssistantOverlayProps {
   open: boolean
   onClose: () => void
 }
 
-const EXECUTING_DELAY_MS = 900
-const COMPLETED_DURATION_MS = 1600
 const OVERLAY_TRANSITION_MS = 220
 
 const focusableSelector = [
@@ -32,18 +31,14 @@ export default function AssistantOverlay({
   const [lastMessage, setLastMessage] = useState('')
   const [assistantResponse, setAssistantResponse] = useState('')
   const [error, setError] = useState('')
-  const [state, setState] = useState<AssistantState>('idle')
   const [shouldRender, setShouldRender] = useState(open)
   const [isVisible, setIsVisible] = useState(false)
   const overlayRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const onCloseRef = useRef(onClose)
-  const requestIdRef = useRef(0)
-  const executingTimerRef = useRef<number | null>(null)
-  const completedTimerRef = useRef<number | null>(null)
   const titleId = useId()
   const subtitleId = useId()
-  const isBusy = state === 'thinking' || state === 'executing'
+  const execution = useExecutionProgress()
 
   useEffect(() => {
     onCloseRef.current = onClose
@@ -74,18 +69,6 @@ export default function AssistantOverlay({
       }
     }
   }, [open])
-
-  useEffect(() => {
-    return () => {
-      requestIdRef.current += 1
-      if (executingTimerRef.current !== null) {
-        window.clearTimeout(executingTimerRef.current)
-      }
-      if (completedTimerRef.current !== null) {
-        window.clearTimeout(completedTimerRef.current)
-      }
-    }
-  }, [])
 
   useEffect(() => {
     if (!open) {
@@ -144,26 +127,14 @@ export default function AssistantOverlay({
 
   const handleSubmit = async () => {
     const trimmedMessage = message.trim()
-    if (!trimmedMessage || isBusy) {
+    if (!trimmedMessage || execution.isActive) {
       return
-    }
-
-    const requestId = requestIdRef.current + 1
-    requestIdRef.current = requestId
-    if (completedTimerRef.current !== null) {
-      window.clearTimeout(completedTimerRef.current)
-      completedTimerRef.current = null
     }
 
     setLastMessage(trimmedMessage)
     setAssistantResponse('')
     setError('')
-    setState('thinking')
-    executingTimerRef.current = window.setTimeout(() => {
-      if (requestIdRef.current === requestId) {
-        setState('executing')
-      }
-    }, EXECUTING_DELAY_MS)
+    execution.start()
 
     try {
       const result = await assistantClient.sendMessage(trimmedMessage)
@@ -171,29 +142,16 @@ export default function AssistantOverlay({
         throw new Error(result.response || 'Jarvis could not complete the request.')
       }
 
-      if (executingTimerRef.current !== null) {
-        window.clearTimeout(executingTimerRef.current)
-        executingTimerRef.current = null
-      }
       setAssistantResponse(result.response)
       setMessage('')
-      setState('completed')
-      completedTimerRef.current = window.setTimeout(() => {
-        if (requestIdRef.current === requestId) {
-          setState('idle')
-        }
-      }, COMPLETED_DURATION_MS)
+      execution.complete()
     } catch (requestError) {
-      if (executingTimerRef.current !== null) {
-        window.clearTimeout(executingTimerRef.current)
-        executingTimerRef.current = null
-      }
       setError(
         requestError instanceof Error
           ? requestError.message
           : 'Jarvis is unavailable right now.',
       )
-      setState('error')
+      execution.fail()
     }
   }
 
@@ -233,8 +191,14 @@ export default function AssistantOverlay({
         />
 
         <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-5 py-6 sm:px-8 sm:py-10">
-          <div className="flex justify-center">
-            <AssistantStatus state={state} />
+          <div
+            key={execution.stage}
+            className="jarvis-stage-transition flex justify-center"
+          >
+            <AssistantStatus
+              state={execution.state}
+              label={execution.label}
+            />
           </div>
 
           <div
@@ -263,23 +227,24 @@ export default function AssistantOverlay({
                   <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300/70">
                     Jarvis
                   </p>
-                  {isBusy && (
-                    <div className="flex items-center gap-3">
+                  {execution.isActive && (
+                    <div
+                      key={execution.stage}
+                      className="jarvis-stage-transition flex items-center gap-3"
+                    >
                       <span
                         className="jarvis-thinking-orb h-3 w-3 rounded-full bg-cyan-300"
                         aria-hidden="true"
                       />
                       <p className="jarvis-thinking-shimmer text-lg">
-                        {state === 'thinking'
-                          ? 'Reasoning through your request…'
-                          : 'Executing the selected action…'}
+                        {execution.label}
                       </p>
                     </div>
                   )}
                   {assistantResponse && (
                     <p
                       className={`text-xl leading-8 text-white sm:text-2xl sm:leading-9 ${
-                        state === 'completed'
+                        execution.stage === 'completed'
                           ? 'jarvis-response-complete'
                           : ''
                       }`}
@@ -301,7 +266,7 @@ export default function AssistantOverlay({
             <AssistantInput
               ref={inputRef}
               value={message}
-              disabled={isBusy}
+              disabled={execution.isActive}
               onChange={setMessage}
               onSubmit={handleSubmit}
             />

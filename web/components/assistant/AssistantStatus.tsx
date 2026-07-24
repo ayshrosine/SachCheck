@@ -18,6 +18,7 @@ export type AssistantState =
 
 interface AssistantStatusProps {
   state: AssistantState
+  label?: string
 }
 
 const statusStyles: Record<
@@ -60,7 +61,10 @@ const statusStyles: Record<
   },
 }
 
-export default function AssistantStatus({ state }: AssistantStatusProps) {
+export default function AssistantStatus({
+  state,
+  label,
+}: AssistantStatusProps) {
   const status = statusStyles[state]
   const StatusIcon = status.icon
   const isActive =
@@ -81,7 +85,7 @@ export default function AssistantStatus({ state }: AssistantStatusProps) {
       >
         <StatusIcon className="h-3.5 w-3.5" />
       </span>
-      <span>{status.label}</span>
+      <span>{label ?? status.label}</span>
       {isActive && (
         <span
           className="jarvis-status-dots flex items-center gap-1"
