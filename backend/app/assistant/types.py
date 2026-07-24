@@ -21,10 +21,19 @@ class ToolResult(BaseModel):
     action: AssistantAction | None = None
 
 
+class AssistantClarification(BaseModel):
+    """A single clarification requested by the assistant."""
+
+    id: str
+    question: str
+    missing_parameters: list[str]
+
+
 class AssistantChatRequest(BaseModel):
     """A message sent to the assistant."""
 
     message: str
+    clarification_id: str | None = None
 
 
 class AssistantChatResponse(BaseModel):
@@ -33,3 +42,4 @@ class AssistantChatResponse(BaseModel):
     success: bool
     response: str
     action: AssistantAction | None = None
+    clarification: AssistantClarification | None = None

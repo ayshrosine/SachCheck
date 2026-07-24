@@ -59,6 +59,7 @@ export default function AssistantOverlay({
   const [message, setMessage] = useState('')
   const [messages, setMessages] = useState<ConversationMessage[]>([])
   const [error, setError] = useState('')
+  const [clarificationId, setClarificationId] = useState<string | null>(null)
   const [shouldFocusInput, setShouldFocusInput] = useState(false)
   const [shouldRender, setShouldRender] = useState(open)
   const [isVisible, setIsVisible] = useState(false)
@@ -109,6 +110,7 @@ export default function AssistantOverlay({
       setMessage('')
       setMessages([])
       setError('')
+      setClarificationId(null)
       setShouldFocusInput(false)
       execution.reset()
       setIsVisible(false)
@@ -223,10 +225,14 @@ export default function AssistantOverlay({
     execution.start()
 
     try {
-      const result = await assistantClient.sendMessage(trimmedMessage)
+      const result = await assistantClient.sendMessage(
+        trimmedMessage,
+        clarificationId ?? undefined,
+      )
       if (sessionIdRef.current !== sessionId) {
         return
       }
+      setClarificationId(result.clarification?.id ?? null)
       if (!result.success) {
         throw new Error(result.response || 'Jarvis could not complete the request.')
       }

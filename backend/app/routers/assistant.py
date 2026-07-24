@@ -17,4 +17,7 @@ engine = AssistantEngine()
 )
 async def chat(request: AssistantChatRequest) -> AssistantChatResponse:
     """Process a message through the assistant engine."""
-    return await engine.process(request.message)
+    return await engine.process(
+        request.message,
+        clarification_id=request.clarification_id,
+    )
