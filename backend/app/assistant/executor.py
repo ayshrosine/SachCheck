@@ -7,7 +7,7 @@ from app.assistant.types import ToolResult
 
 
 class ExecutionEngine:
-    """Execute single-step plans through the tool registry."""
+    """Execute plan steps sequentially through the tool registry."""
 
     async def execute(
         self,
@@ -15,9 +15,19 @@ class ExecutionEngine:
         context: ApplicationContext,
     ) -> ToolResult:
         """Execute a plan without modifying it."""
-        step = plan.steps[0]
-        return await tool_registry.execute(
-            step.tool_name,
-            context=context,
-            **step.parameters,
-        )
+        if not plan.steps:
+            raise ValueError("Execution plans must contain at least one step.")
+
+        result: ToolResult | None = None
+        for step in plan.steps:
+            result = await tool_registry.execute(
+                step.tool_name,
+                context=context,
+                **step.parameters,
+            )
+            if not result.success:
+                return result
+
+        if result is None:
+            raise RuntimeError("Execution completed without a tool result.")
+        return result
