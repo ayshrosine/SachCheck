@@ -33,6 +33,47 @@ class ModelRouter:
         prompt_path = os.path.join(os.path.dirname(__file__), "prompts", "system_prompt.txt")
         with open(prompt_path, "r") as f:
             return f.read()
+
+    async def generate_text(self, prompt: str) -> Optional[str]:
+        """Generate text using the configured model providers."""
+        if self.primary_model:
+            try:
+                response = await asyncio.to_thread(
+                    self.primary_model.generate_content,
+                    prompt,
+                )
+                if response:
+                    response_text = response.text
+                    if isinstance(response_text, str):
+                        return response_text
+            except Exception as e:
+                print(f"Cloud text generation failed: {e}")
+
+        try:
+            response = await asyncio.to_thread(
+                requests.post,
+                f"{self.ollama_base_url}/api/generate",
+                json={
+                    "model": self.ollama_model,
+                    "prompt": prompt,
+                    "format": "json",
+                    "stream": False,
+                },
+                timeout=120,
+            )
+            if response.status_code == 200:
+                response_text = response.json().get("response")
+                if isinstance(response_text, str):
+                    return response_text
+            else:
+                print(
+                    "Ollama text generation failed: "
+                    f"HTTP {response.status_code} - {response.text}"
+                )
+        except Exception as e:
+            print(f"Ollama text generation failed: {e}")
+
+        return None
     
     def _parse_verdict(self, response_text: str, model_used: str, processing_time_ms: int) -> VerdictResponse:
         """Parse the model response into a structured VerdictResponse"""
