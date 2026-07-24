@@ -6,11 +6,21 @@ from uuid import uuid4
 
 
 @dataclass(frozen=True, slots=True)
-class Plan:
-    """A tool execution selected by the planner."""
+class ExecutionStep:
+    """A single tool execution within a plan."""
 
     tool_name: str
     parameters: dict[str, Any] = field(default_factory=dict)
+    step_id: str = field(default_factory=lambda: str(uuid4()))
+    description: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class Plan:
+    """An execution plan selected by the planner."""
+
+    steps: tuple[ExecutionStep, ...]
     plan_id: str = field(default_factory=lambda: str(uuid4()))
     description: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -22,7 +32,7 @@ class Planner:
     async def plan(self, message: str) -> Plan | None:
         """Create a plan for an exact supported message."""
         if message == "health":
-            return Plan(tool_name="health_check")
+            return Plan(steps=(ExecutionStep(tool_name="health_check"),))
         if message == "history":
-            return Plan(tool_name="get_history")
+            return Plan(steps=(ExecutionStep(tool_name="get_history"),))
         return None

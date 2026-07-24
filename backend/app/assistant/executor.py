@@ -15,8 +15,9 @@ class ExecutionEngine:
         context: ApplicationContext,
     ) -> ToolResult:
         """Execute a plan without modifying it."""
+        step = plan.steps[0]
         return await tool_registry.execute(
-            plan.tool_name,
+            step.tool_name,
             context=context,
-            **plan.parameters,
+            **step.parameters,
         )
