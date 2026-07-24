@@ -126,6 +126,12 @@ export function useExecutionProgress() {
     setStage('error')
   }, [clearTimers])
 
+  const reset = useCallback(() => {
+    clearTimers()
+    sequenceIdRef.current += 1
+    setStage('idle')
+  }, [clearTimers])
+
   useEffect(() => {
     return () => {
       sequenceIdRef.current += 1
@@ -145,5 +151,6 @@ export function useExecutionProgress() {
     start,
     complete,
     fail,
+    reset,
   }
 }

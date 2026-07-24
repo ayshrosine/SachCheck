@@ -14,6 +14,15 @@ interface AssistantOverlayProps {
   onClose: () => void
 }
 
+type ConversationRole = 'user' | 'assistant'
+
+interface ConversationMessage {
+  id: string
+  role: ConversationRole
+  content: string
+  timestamp: Date
+}
+
 const OVERLAY_TRANSITION_MS = 220
 
 const focusableSelector = [
@@ -23,19 +32,39 @@ const focusableSelector = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',')
 
+function createConversationMessage(
+  role: ConversationRole,
+  content: string,
+): ConversationMessage {
+  return {
+    id: crypto.randomUUID(),
+    role,
+    content,
+    timestamp: new Date(),
+  }
+}
+
+function formatTimestamp(timestamp: Date): string {
+  return timestamp.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 export default function AssistantOverlay({
   open,
   onClose,
 }: AssistantOverlayProps) {
   const [message, setMessage] = useState('')
-  const [lastMessage, setLastMessage] = useState('')
-  const [assistantResponse, setAssistantResponse] = useState('')
+  const [messages, setMessages] = useState<ConversationMessage[]>([])
   const [error, setError] = useState('')
   const [shouldRender, setShouldRender] = useState(open)
   const [isVisible, setIsVisible] = useState(false)
   const overlayRef = useRef<HTMLDivElement>(null)
+  const conversationRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const onCloseRef = useRef(onClose)
+  const sessionIdRef = useRef(0)
   const titleId = useId()
   const subtitleId = useId()
   const execution = useExecutionProgress()
@@ -54,6 +83,11 @@ export default function AssistantOverlay({
         setIsVisible(true)
       })
     } else {
+      sessionIdRef.current += 1
+      setMessage('')
+      setMessages([])
+      setError('')
+      execution.reset()
       setIsVisible(false)
       transitionTimer = window.setTimeout(() => {
         setShouldRender(false)
@@ -68,7 +102,32 @@ export default function AssistantOverlay({
         window.clearTimeout(transitionTimer)
       }
     }
-  }, [open])
+  }, [open, execution.reset])
+
+  useEffect(() => {
+    if (!open || !conversationRef.current) {
+      return
+    }
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      const conversation = conversationRef.current
+      if (!conversation) {
+        return
+      }
+
+      const prefersReducedMotion = window.matchMedia(
+        '(prefers-reduced-motion: reduce)',
+      ).matches
+      conversation.scrollTo({
+        top: conversation.scrollHeight,
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      })
+    })
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame)
+    }
+  }, [execution.stage, messages, open])
 
   useEffect(() => {
     if (!open) {
@@ -131,21 +190,33 @@ export default function AssistantOverlay({
       return
     }
 
-    setLastMessage(trimmedMessage)
-    setAssistantResponse('')
+    const sessionId = sessionIdRef.current
+    setMessages((currentMessages) => [
+      ...currentMessages,
+      createConversationMessage('user', trimmedMessage),
+    ])
+    setMessage('')
     setError('')
     execution.start()
 
     try {
       const result = await assistantClient.sendMessage(trimmedMessage)
+      if (sessionIdRef.current !== sessionId) {
+        return
+      }
       if (!result.success) {
         throw new Error(result.response || 'Jarvis could not complete the request.')
       }
 
-      setAssistantResponse(result.response)
-      setMessage('')
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        createConversationMessage('assistant', result.response),
+      ])
       execution.complete()
     } catch (requestError) {
+      if (sessionIdRef.current !== sessionId) {
+        return
+      }
       setError(
         requestError instanceof Error
           ? requestError.message
@@ -162,7 +233,7 @@ export default function AssistantOverlay({
   return (
     <div
       ref={overlayRef}
-      className={`jarvis-overlay-backdrop fixed inset-0 z-[100] min-h-[100dvh] overflow-y-auto text-white ${
+      className={`jarvis-overlay-backdrop fixed inset-0 z-[100] min-h-[100dvh] overflow-hidden text-white ${
         isVisible
           ? 'pointer-events-auto opacity-100'
           : 'pointer-events-none opacity-0'
@@ -183,14 +254,14 @@ export default function AssistantOverlay({
         aria-hidden="true"
       />
 
-      <div className="jarvis-overlay-content relative flex min-h-[100dvh] flex-col">
+      <div className="jarvis-overlay-content relative flex h-[100dvh] flex-col">
         <AssistantHeader
           titleId={titleId}
           subtitleId={subtitleId}
           onClose={onClose}
         />
 
-        <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-5 py-6 sm:px-8 sm:py-10">
+        <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-5 py-6 sm:px-8 sm:py-10">
           <div
             key={execution.stage}
             className="jarvis-stage-transition flex justify-center"
@@ -202,35 +273,78 @@ export default function AssistantOverlay({
           </div>
 
           <div
-            className="flex flex-1 items-center justify-center py-8 sm:py-12"
-            aria-live="polite"
+            ref={conversationRef}
+            className="jarvis-conversation-scroll min-h-0 flex-1 overflow-y-auto py-8 sm:py-10"
           >
-            {!lastMessage ? (
-              <div className="max-w-xl text-center">
-                <p className="text-3xl font-light tracking-tight text-slate-200 sm:text-5xl">
-                  Ask. Verify. Understand.
-                </p>
-                <p className="mx-auto mt-4 max-w-md text-sm leading-6 text-slate-500 sm:text-base">
-                  Your assistant response will appear here.
-                </p>
-              </div>
-            ) : (
-              <div className="w-full max-w-2xl">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  Your request
-                </p>
-                <p className="text-lg leading-8 text-slate-300">
-                  {lastMessage}
-                </p>
-
-                <div className="mt-8 border-l border-cyan-300/30 pl-5 sm:pl-7">
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300/70">
-                    Jarvis
+            <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-end">
+              {messages.length === 0 && !execution.isActive && !error ? (
+                <div className="my-auto max-w-xl self-center text-center">
+                  <p className="text-3xl font-light tracking-tight text-slate-200 sm:text-5xl">
+                    Ask. Verify. Understand.
                   </p>
+                  <p className="mx-auto mt-4 max-w-md text-sm leading-6 text-slate-500 sm:text-base">
+                    Your assistant response will appear here.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <ol
+                    className="space-y-6"
+                    role="log"
+                    aria-label="Jarvis conversation"
+                    aria-live="polite"
+                    aria-relevant="additions"
+                  >
+                    {messages.map((conversationMessage) => (
+                      <li
+                        key={conversationMessage.id}
+                        className="jarvis-stage-transition"
+                      >
+                        <article
+                          className={`rounded-r-2xl border-l py-3 pl-5 pr-3 sm:pl-7 ${
+                            conversationMessage.role === 'assistant'
+                              ? 'border-cyan-300/30 bg-gradient-to-r from-cyan-400/[0.06] to-transparent'
+                              : 'border-indigo-300/20'
+                          }`}
+                        >
+                          <header className="mb-2 flex items-center justify-between gap-4">
+                            <span
+                              className={`text-xs font-semibold uppercase tracking-[0.2em] ${
+                                conversationMessage.role === 'assistant'
+                                  ? 'text-cyan-300/70'
+                                  : 'text-slate-500'
+                              }`}
+                            >
+                              {conversationMessage.role === 'assistant'
+                                ? 'Jarvis'
+                                : 'You'}
+                            </span>
+                            <time
+                              className="text-[11px] text-slate-600"
+                              dateTime={conversationMessage.timestamp.toISOString()}
+                            >
+                              {formatTimestamp(conversationMessage.timestamp)}
+                            </time>
+                          </header>
+                          <p
+                            className={`whitespace-pre-wrap break-words ${
+                              conversationMessage.role === 'assistant'
+                                ? 'text-xl leading-8 text-white sm:text-2xl sm:leading-9'
+                                : 'text-base leading-7 text-slate-300 sm:text-lg'
+                            }`}
+                          >
+                            {conversationMessage.content}
+                          </p>
+                        </article>
+                      </li>
+                    ))}
+                  </ol>
+
                   {execution.isActive && (
                     <div
                       key={execution.stage}
-                      className="jarvis-stage-transition flex items-center gap-3"
+                      className="jarvis-stage-transition mt-7 flex items-center gap-3 border-l border-cyan-300/20 py-2 pl-5 sm:pl-7"
+                      aria-hidden="true"
                     >
                       <span
                         className="jarvis-thinking-orb h-3 w-3 rounded-full bg-cyan-300"
@@ -241,28 +355,21 @@ export default function AssistantOverlay({
                       </p>
                     </div>
                   )}
-                  {assistantResponse && (
-                    <p
-                      className={`text-xl leading-8 text-white sm:text-2xl sm:leading-9 ${
-                        execution.stage === 'completed'
-                          ? 'jarvis-response-complete'
-                          : ''
-                      }`}
-                    >
-                      {assistantResponse}
-                    </p>
-                  )}
+
                   {error && (
-                    <p className="text-lg leading-8 text-rose-300">
+                    <div
+                      className="jarvis-stage-transition mt-7 border-l border-rose-300/30 py-2 pl-5 text-lg leading-8 text-rose-300 sm:pl-7"
+                      role="alert"
+                    >
                       {error}
-                    </p>
+                    </div>
                   )}
-                </div>
-              </div>
-            )}
+                </>
+              )}
+            </div>
           </div>
 
-          <div className="pb-2 sm:pb-4">
+          <div className="shrink-0 pb-2 pt-3 sm:pb-4">
             <AssistantInput
               ref={inputRef}
               value={message}
