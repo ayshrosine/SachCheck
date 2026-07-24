@@ -1,13 +1,18 @@
 """Core assistant engine."""
 
+from app.assistant.planner import Planner
 from app.assistant.registry import tool_registry
 
 
 class AssistantEngine:
-    """Process messages sent to the assistant."""
+    """Orchestrate planning and tool execution."""
+
+    def __init__(self) -> None:
+        self._planner = Planner()
 
     async def process(self, message: str) -> str:
-        """Process a supported assistant message."""
-        if message == "health":
-            return await tool_registry.execute("health_check")
-        return "Jarvis initialized."
+        """Plan and process an assistant message."""
+        plan = await self._planner.plan(message)
+        if plan is None:
+            return "Jarvis initialized."
+        return await tool_registry.execute(plan.tool_name, **plan.parameters)
