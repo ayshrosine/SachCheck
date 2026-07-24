@@ -6,7 +6,7 @@ from slowapi.errors import RateLimitExceeded
 import sentry_sdk
 from app.config import settings
 from app.db import db
-from app.routers import scan, auth, whatsapp
+from app.routers import assistant, auth, scan, whatsapp
 from app.rate_limit import limiter, rate_limit_handler
 from app.schemas import HealthResponse
 from datetime import datetime
@@ -61,6 +61,7 @@ app.state.limiter = limiter
 app.include_router(scan.router, prefix="/api", tags=["scan"])
 app.include_router(auth.router, prefix="/api", tags=["auth"])
 app.include_router(whatsapp.router, prefix="/api", tags=["whatsapp"])
+app.include_router(assistant.router, tags=["assistant"])
 
 
 @app.get("/", response_model=HealthResponse)
